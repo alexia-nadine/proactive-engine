@@ -5,3 +5,14 @@ spring:
   application:
     name: proactive-engine
 
+proactive:
+  rules:
+    thresholds:
+      # Início do período considerado noturno para a persona (jovem pcd cadeirante)
+      night-start-time: "21:00"
+      # Término do período noturno
+      night-end-time: "05:00"
+      # Limiar de lux para garantir segurança motora
+      min-safe-luminosity: 20
+      # Tempo máximo de permanência (ADL) antes de considerar anomalia
+      max-bathroom-duration-minutes: 20
