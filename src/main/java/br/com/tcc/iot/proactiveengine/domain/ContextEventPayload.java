@@ -16,6 +16,16 @@ public class ContextEventPayload {
     Boolean presenceDetected;
     Integer luminosityLux;
 
+    public ContextEventPayload(LocalTime timeOfDay, UserPosture userPosture, String roomLocation, DoorStatus doorStatus, BedPressureStatus bedPressureStatus, Boolean presenceDetected, Integer luminosityLux) {
+        this.timeOfDay = timeOfDay;
+        this.userPosture = userPosture;
+        this.roomLocation = roomLocation;
+        this.doorStatus = doorStatus;
+        this.bedPressureStatus = bedPressureStatus;
+        this.presenceDetected = presenceDetected;
+        this.luminosityLux = luminosityLux;
+    }
+
     public Integer getLuminosityLux() {
         return luminosityLux;
     }
