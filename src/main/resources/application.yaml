@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: proactive-engine
+  # Configuração RabbitMQ
+  rabbitmq:
+      host: ${RABBITMQ_HOST:localhost}
+      port: ${RABBITMQ_PORT:5672}
+      username: ${RABBITMQ_USER}
+      password: ${RABBITMQ_PASSWORD}
 
 proactive:
   rules:
