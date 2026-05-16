@@ -7,12 +7,17 @@ import br.com.tcc.iot.proactiveengine.domain.enums.BedPressureStatus;
 import br.com.tcc.iot.proactiveengine.domain.enums.DoorStatus;
 import br.com.tcc.iot.proactiveengine.domain.enums.UserPosture;
 import br.com.tcc.iot.proactiveengine.infrastructure.config.ProactiveRulesProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
 
 @Service
 public class ProactiveDecisionService implements EvaluateRoutineUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(ProactiveDecisionService.class);
+
     private final ProactiveRulesProperties thresholds;
     private final ActionTriggerPort actionTriggerPort;
 
@@ -23,45 +28,51 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
 
     @Override
     public void evaluate(ContextEventPayload payload) {
-        // O sistema só monitoriza as rotinas de proatividade de segurança no período noturno
-        if (isNightTime(payload.getTimeOfDay())) {
-
-            // ==========================================
-            // ROTINA 1: BOA NOITE AUTÓNOMA
-            // Matriz: Deitado + No Quarto + Cama Ocupada
-            // ==========================================
-            boolean isUserSleeping = payload.getUserPosture() == UserPosture.LYING_DOWN &&
-                    "BEDROOM".equals(payload.getRoomLocation()) && payload.getBedPressureStatus() == BedPressureStatus.OCCUPIED;
-
-            if (isUserSleeping) {
-                // Só dispara a ação se a porta estiver efetivamente vulnerável (destrancada)
-                if (payload.getDoorStatus() == DoorStatus.UNLOCKED) {
-                    actionTriggerPort.triggerSecurityAlert();
-                    System.out.println("ROTINA 1 - AÇÃO PROATIVA DISPARADA: Trancando portas e apagando luzes. Motivo: Repouso iniciado.");
-                } else {
-                    System.out.println("ROTINA 1 - Ignorado: A porta já se encontra trancada. Poupando processamento.");
-                }
-            }
-
-            // ==========================================
-            // ROTINA 2: DESLOCAMENTO NOTURNO SEGURO
-            // Matriz: Cama Vazia + Movimento Detetado
-            // ==========================================
-            boolean isUserMoving = payload.getBedPressureStatus() == BedPressureStatus.UNOCCUPIED &&
-                    Boolean.TRUE.equals(payload.getPresenceDetected());
-
-            if (isUserMoving) {
-                // Só acende a luz guia se o ambiente estiver escuro (abaixo do limiar seguro)
-                if (payload.getLuminosityLux() < thresholds.minSafeLuminosity()) {
-                    actionTriggerPort.turnOnPathLights();
-                    System.out.println("ROTINA 2 - AÇÃO PROATIVA DISPARADA: Acendendo caminho de luz. Motivo: Risco visual na transferência do cadeirante.");
-                } else {
-                    System.out.println("ROTINA 2 - Ignorado: O ambiente já possui luminosidade igual ou superior ao limiar seguro.");
-                }
-            }
-
+        if (isNightTime(payload.timeOfDay())) {
+            evaluateSleepRoutine(payload);
+            evaluateNightMovementRoutine(payload);
         } else {
-            System.out.println("Monitorização: Evento ignorado pois está fora do limiar noturno.");
+            log.debug("Monitorização: Evento ignorado. Fora do limiar noturno.");
+        }
+    }
+
+    /**
+     * ROTINA 1: Boa Noite Autônoma
+     * Avalia o risco de evasão noturna quando o usuario com mobilidade reduzida já se encontra deitado.
+     * Matriz: Deitado + No Quarto + Cama Ocupada
+     */
+    private void evaluateSleepRoutine(ContextEventPayload payload) {
+        boolean isUserSleeping = payload.userPosture() == UserPosture.LYING_DOWN &&
+                "BEDROOM".equals(payload.roomLocation()) && payload.bedPressureStatus() == BedPressureStatus.OCCUPIED;
+
+        if (isUserSleeping) {
+            // Só dispara a ação se a porta estiver efetivamente vulnerável (destrancada)
+            if (payload.doorStatus() == DoorStatus.UNLOCKED) {
+                actionTriggerPort.triggerSecurityAlert();
+                log.warn("ROTINA 1 DISPARADA: Trancando portas e apagando luzes. Motivo: Repouso iniciado com portas destrancadas.");
+            } else {
+                log.info("ROTINA 1 IGNORADA: A porta já se encontra trancada de forma segura.");
+            }
+        }
+    }
+
+    /**
+     * ROTINA 2: Deslocamento Noturno Seguro
+     * Avalia o risco de queda por ausência de luminosidade caso o usuario se levante de madrugada.
+     * Matriz: Cama Vazia + Movimento Detetado
+     */
+    private void evaluateNightMovementRoutine(ContextEventPayload payload) {
+        boolean isUserMoving = payload.bedPressureStatus() == BedPressureStatus.UNOCCUPIED &&
+                Boolean.TRUE.equals(payload.presenceDetected());
+
+        if (isUserMoving) {
+            // Só acende a luz guia se o ambiente estiver escuro (abaixo do limiar seguro)
+            if (payload.luminosityLux() < thresholds.minSafeLuminosity()) {
+                actionTriggerPort.turnOnPathLights();
+                log.warn("ROTINA 2 DISPARADA: Acendendo caminho de luz. Motivo: Risco visual na transferência do cadeirante.");
+            } else {
+                log.info("ROTINA 2 IGNORADA: O ambiente já possui luminosidade igual ou superior ao limiar seguro.");
+            }
         }
     }
 
