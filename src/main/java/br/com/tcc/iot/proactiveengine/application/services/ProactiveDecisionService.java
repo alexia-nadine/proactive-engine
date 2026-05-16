@@ -5,6 +5,7 @@ import br.com.tcc.iot.proactiveengine.application.ports.output.ActionTriggerPort
 import br.com.tcc.iot.proactiveengine.domain.ContextEventPayload;
 import br.com.tcc.iot.proactiveengine.domain.enums.BedPressureStatus;
 import br.com.tcc.iot.proactiveengine.domain.enums.DoorStatus;
+import br.com.tcc.iot.proactiveengine.domain.enums.RoomLocation;
 import br.com.tcc.iot.proactiveengine.domain.enums.UserPosture;
 import br.com.tcc.iot.proactiveengine.infrastructure.config.ProactiveRulesProperties;
 import org.slf4j.Logger;
@@ -43,7 +44,8 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
      */
     private void evaluateSleepRoutine(ContextEventPayload payload) {
         boolean isUserSleeping = payload.userPosture() == UserPosture.LYING_DOWN &&
-                "BEDROOM".equals(payload.roomLocation()) && payload.bedPressureStatus() == BedPressureStatus.OCCUPIED;
+                payload.roomLocation() == RoomLocation.BEDROOM &&
+                payload.bedPressureStatus() == BedPressureStatus.OCCUPIED;
 
         if (isUserSleeping) {
             // Só dispara a ação se a porta estiver efetivamente vulnerável (destrancada)
