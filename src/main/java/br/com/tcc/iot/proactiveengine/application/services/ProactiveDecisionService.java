@@ -29,12 +29,13 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
 
     @Override
     public void evaluate(ContextEventPayload payload) {
-        if (isNightTime(payload.timeOfDay())) {
-            evaluateSleepRoutine(payload);
-            evaluateNightMovementRoutine(payload);
-        } else {
-            log.debug("Monitorização: Evento ignorado. Fora do limiar noturno.");
+        if (!isNightTime(payload.timeOfDay())) {
+            log.debug("Monitorização: Evento ignorado. Fora do limiar noturno definido.");
+            return;
         }
+
+        evaluateSleepRoutine(payload);
+        evaluateNightMovementRoutine(payload);
     }
 
     /**
@@ -47,14 +48,17 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
                 payload.roomLocation() == RoomLocation.BEDROOM &&
                 payload.bedPressureStatus() == BedPressureStatus.OCCUPIED;
 
-        if (isUserSleeping) {
-            // Só dispara a ação se a porta estiver efetivamente vulnerável (destrancada)
-            if (payload.doorStatus() == DoorStatus.UNLOCKED) {
-                actionTriggerPort.triggerSecurityAlert();
-                log.warn("ROTINA 1 DISPARADA: Trancando portas e apagando luzes. Motivo: Repouso iniciado com portas destrancadas.");
-            } else {
-                log.info("ROTINA 1 IGNORADA: A porta já se encontra trancada de forma segura.");
-            }
+        // Guard Clause: Se não estiver dormindo, interrompe a avaliação desta rotina
+        if (!isUserSleeping) {
+            return;
+        }
+
+        // Avaliação de vulnerabilidade e tomada de decisão
+        if (payload.doorStatus() == DoorStatus.UNLOCKED) {
+            actionTriggerPort.triggerSecurityAlert();
+            log.info("ROTINA 1 DISPARADA: Trancando portas e apagando luzes. Motivo: Repouso iniciado com portas destrancadas.");
+        } else {
+            log.debug("ROTINA 1 IGNORADA: A porta já se encontra trancada de forma segura.");
         }
     }
 
@@ -67,14 +71,17 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
         boolean isUserMoving = payload.bedPressureStatus() == BedPressureStatus.UNOCCUPIED &&
                 Boolean.TRUE.equals(payload.presenceDetected());
 
-        if (isUserMoving) {
-            // Só acende a luz guia se o ambiente estiver escuro (abaixo do limiar seguro)
-            if (payload.luminosityLux() < thresholds.minSafeLuminosity()) {
-                actionTriggerPort.turnOnPathLights();
-                log.warn("ROTINA 2 DISPARADA: Acendendo caminho de luz. Motivo: Risco visual na transferência do cadeirante.");
-            } else {
-                log.info("ROTINA 2 IGNORADA: O ambiente já possui luminosidade igual ou superior ao limiar seguro.");
-            }
+        // Guard Clause: Se não houver movimentação fora da cama, interrompe a avaliação
+        if (!isUserMoving) {
+            return;
+        }
+
+        // Avaliação de risco visual e tomada de decisão
+        if (payload.luminosityLux() < thresholds.minSafeLuminosity()) {
+            actionTriggerPort.turnOnPathLights();
+            log.info("ROTINA 2 DISPARADA: Acendendo caminho de luz. Motivo: Risco visual na transferência ou movimentação.");
+        } else {
+            log.debug("ROTINA 2 IGNORADA: O ambiente já possui luminosidade igual ou superior ao limiar seguro.");
         }
     }
 
