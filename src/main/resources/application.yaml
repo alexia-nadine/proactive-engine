@@ -22,3 +22,15 @@ proactive:
       min-safe-luminosity: 20
       # Tempo máximo de permanência (ADL) antes de considerar anomalia
       max-bathroom-duration-minutes: 20
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ProactiveEngine
