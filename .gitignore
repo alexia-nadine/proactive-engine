@@ -1,4 +1,3 @@
-HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -34,3 +33,5 @@ build/
 
 # Secret da Infraestrutura
 .env
+
+*.log
