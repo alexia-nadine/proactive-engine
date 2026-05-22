@@ -8,6 +8,7 @@ import br.com.tcc.iot.proactiveengine.domain.enums.DoorStatus;
 import br.com.tcc.iot.proactiveengine.domain.enums.RoomLocation;
 import br.com.tcc.iot.proactiveengine.domain.enums.UserPosture;
 import br.com.tcc.iot.proactiveengine.infrastructure.config.ProactiveRulesProperties;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -21,10 +22,12 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
 
     private final ProactiveRulesProperties thresholds;
     private final ActionTriggerPort actionTriggerPort;
+    private final MeterRegistry meterRegistry;
 
-    public ProactiveDecisionService(ProactiveRulesProperties thresholds, ActionTriggerPort actionTriggerPort) {
+    public ProactiveDecisionService(ProactiveRulesProperties thresholds, ActionTriggerPort actionTriggerPort, MeterRegistry meterRegistry) {
         this.thresholds = thresholds;
         this.actionTriggerPort = actionTriggerPort;
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
@@ -57,6 +60,16 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
         if (payload.doorStatus() == DoorStatus.UNLOCKED) {
             actionTriggerPort.triggerSecurityAlert();
             log.info("ROTINA 1 DISPARADA: Trancando portas e apagando luzes. Motivo: Repouso iniciado com portas destrancadas.");
+
+            meterRegistry.counter("proactive_actions_total",
+                    "routine", "Boa Noite Autonoma",
+                    "action", "Desligar luzes e trancar portas",
+                    "room", payload.roomLocation().name(),
+                    "posture", payload.userPosture().name(),           // LYING_DOWN (Deitado)
+                    "physical_relief", "Deslocamento Leito-Porta",     // Esforço físico evitado
+                    "cognitive_relief", "Seguranca Residencial"        // Carga cognitiva aliviada
+            ).increment();
+
         } else {
             log.debug("ROTINA 1 IGNORADA: A porta já se encontra trancada de forma segura.");
         }
@@ -80,6 +93,15 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
         if (payload.luminosityLux() < thresholds.minSafeLuminosity()) {
             actionTriggerPort.turnOnPathLights();
             log.info("ROTINA 2 DISPARADA: Acendendo caminho de luz. Motivo: Risco visual na transferência ou movimentação.");
+
+            meterRegistry.counter("proactive_actions_total",
+                    "routine", "Deslocamento Noturno Seguro",
+                    "action", "Iluminar rota",
+                    "room", payload.roomLocation().name(),           // Mostra ONDE a autonomia foi dada
+                    "posture", payload.userPosture().name(),         // Mostra a vulnerabilidade atual (ex: SITTING)
+                    "physical_relief", "Acionamento de Interruptores", // O que ele não precisou fazer fisicamente
+                    "cognitive_relief", "Prevencao de Quedas"        // O que ele não precisou se preocupar
+            ).increment();
         } else {
             log.debug("ROTINA 2 IGNORADA: O ambiente já possui luminosidade igual ou superior ao limiar seguro.");
         }
