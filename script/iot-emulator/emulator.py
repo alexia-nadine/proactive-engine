@@ -17,7 +17,7 @@ RABBIT_PORT = 5672
 RABBIT_USER = getenv('RABBITMQ_USER')
 RABBIT_PASS = getenv('RABBITMQ_PASSWORD')
 QUEUE_NAME = 'iot.sensor.events'
-TOTAL_EVENTOS = 60
+TOTAL_EVENTOS = 300
 
 def conectar_rabbitmq():
     credentials = pika.PlainCredentials(RABBIT_USER, RABBIT_PASS)
