@@ -15,13 +15,16 @@ proactive:
   rules:
     thresholds:
       # Início do período considerado noturno para a persona (jovem pcd cadeirante)
-      night-start-time: "21:00"
+      night-start-time: "22:00"
       # Término do período noturno
-      night-end-time: "05:00"
-      # Limiar de lux para garantir segurança motora
-      min-safe-luminosity: 20
+      night-end-time: "06:00"
+
+      # Limiar de lux para garantir deslocamento seguro durante a noite de uma pessoa cadeirante
+      # Verificar depois se esse valor tem unidade de medida e se preciso incluir no codigo
+      min-safe-luminosity: 150
+
       # Tempo máximo de permanência (ADL) antes de considerar anomalia
-      max-bathroom-duration-minutes: 20
+      bed-absence-delay-seconds: 30
 
 management:
   endpoints:
