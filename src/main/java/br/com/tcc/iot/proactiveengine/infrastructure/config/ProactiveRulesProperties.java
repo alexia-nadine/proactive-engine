@@ -8,6 +8,7 @@ public record ProactiveRulesProperties (
         LocalTime nightStartTime,
         LocalTime nightEndTime,
         Integer minSafeLuminosity,
-        Integer maxBathroomDurationMinutes
+        Integer bedAbsenceDelaySeconds
+       // Integer maxBathroomDurationMinutes
 ) {
 }
