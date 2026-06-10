@@ -1,4 +1,4 @@
-package br.com.tcc.iot.proactiveengine.infrastructure.adapters;
+package br.com.tcc.iot.proactiveengine.infrastructure.adapters.outbound;
 
 import br.com.tcc.iot.proactiveengine.application.ports.output.ActionTriggerPort;
 import org.springframework.stereotype.Component;
