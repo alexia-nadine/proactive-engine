@@ -1,33 +1,37 @@
 # 📡 Emulador IoT — Visão Funcional (`emulator.py`)
 
-Este documento descreve o comportamento do emulador IoT (`script/iot-emulator/emulator.py`) e define a estrutura dos payloads JSON publicados na fila RabbitMQ. O foco principal é a semântica das mensagens geradas e os cenários simulados para validar o motor proativo.
-
+Este módulo contém o script Python responsável por simular o ecossistema de sensores de um Ambiente de Vida Assistida (AAL). Ele atua como o produtor (*Publisher*) na arquitetura orientada a eventos, injetando cargas de contexto dinâmico no RabbitMQ para validar o comportamento e a resiliência do Back-end Proativo.
 ---
 
 ## 📌 Objetivo do Emulador
 
-O script atua como um produtor de dados, simulando eventos de contexto que combinam o estado do usuário e variáveis do ambiente. Cada evento é publicado na fila `iot.sensor.events` contendo a propriedade `content_type: application/json`, permitindo que o consumidor teste regras de negócio e ações proativas.
+O emulador não envia dados de forma engessada. Ele utiliza uma abordagem estocástica para construir um "baralho" de 100 cenários aleatórios a cada execução. Esses cenários simulam variações de luminosidade, postura, localização e tempo, resultando na transmissão massiva de **1.250 eventos contínuos** para submeter as *guard clauses* e a rastreabilidade de estado (em memória) do Java a testes de estresse.
 
 ---
 
 ## ⚙️ Cenários Simulados
 
-O emulador gera eventos estatísticos baseados em probabilidades pré-definidas para reproduzir três comportamentos principais:
+O emulador utiliza uma abordagem estocástica para construir um "baralho" de 100 cenários aleatórios a cada execução. A distribuição é dividida entre eventos neutros (ruído) e gatilhos de rotinas proativas:
 
-**1. Rotina Segura (Comportamento Padrão)**
+**1. Dia - Evento Neutro (30%)**
 *   **Período:** Diurno (08:00 às 18:00).
-*   **Condições Típicas:** `roomLocation` na sala ou cozinha, `bedPressureStatus` como desocupada, e alta luminosidade.
-*   **Ação Esperada:** Nenhuma. O motor não deve disparar ações proativas.
+*   **Condições Típicas:** Alta luminosidade (300-800 lux), usuário em áreas comuns (sala/cozinha), cama desocupada.
+*   **Ação Esperada:** O sistema atua como barreira primária do ciclo circadiano, descartando o evento silenciosamente.
 
-**2. Risco de Evasão / Esquecimento**
-*   **Período:** Noturno (ex: 23:10 às 23:50).
+**2. Falso Positivo / Alívio de Pressão (20%)**
+*   **Período:** Madrugada.
+*   **Condições Típicas:** Sensor da cama detecta ausência (`UNOCCUPIED`), mas o usuário retorna à posição de repouso em um intervalo curto (15 segundos).
+*   **Ação Esperada:** O motor processa o rastreamento em memória e mitiga o acionamento, validando o filtro de tolerância contra falsos positivos.
+
+**3. Rotina Boa Noite Autônoma (25%)**
+*   **Período:** Noturno (23:10 às 23:50).
 *   **Condições Típicas:** Usuário deitado (`LYING_DOWN`), no quarto (`BEDROOM`), cama ocupada (`OCCUPIED`), baixa luminosidade, porém com a porta destrancada (`UNLOCKED`).
-*   **Ação Esperada:** Disparo do comportamento da rotina "Boa noite autônoma" (ex: trancar portas e desligar luzes restantes).
+*   **Ação Esperada:** Disparo de segurança residencial.
 
-**3. Movimentação Noturna**
-*   **Período:** Madrugada (ex: 02:00 às 04:00).
-*   **Condições Típicas:** Cama desocupada (`UNOCCUPIED`), presença detectada (`true`) e luminosidade muito baixa.
-*   **Ação Esperada:** Prevenção de colisão da rotina "Deslocamento Noturno Seguro" (ex: acender luzes guia no nível mínimo).
+**4. Deslocamento Noturno Seguro (25%)**
+*   **Período:** Madrugada.
+*   **Condições Típicas:** Cama desocupada (`UNOCCUPIED`), presença detectada (`true`) e baixa luminosidade.
+*   **Ação Esperada:** O sistema antecipa a necessidade visual do usuário, acendendo o caminho de luz após a consolidação da ausência (limiar de 30s) para prevenção de colisão.
 
 ---
 
