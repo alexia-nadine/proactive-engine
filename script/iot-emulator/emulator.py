@@ -18,8 +18,6 @@ RABBIT_USER = getenv('RABBITMQ_USER', 'guest')
 RABBIT_PASS = getenv('RABBITMQ_PASSWORD', 'guest')
 QUEUE_NAME = 'iot.sensor.events'
 
-# Quantos macro-cenários o teste vai rodar
-TOTAL_CENARIOS = 120
 
 def conectar_rabbitmq():
     credentials = pika.PlainCredentials(RABBIT_USER, RABBIT_PASS)
@@ -54,32 +52,32 @@ def executar_simulacao_dinamica():
         # 1. Criação do "Baralho" de Cenários (Garante a distribuição estatística exata)
         # 20 Cenários no total: 50% Eventos Neutros/Ruído e 50% Eventos de Ação (equitativos)
         cenarios = (
-            ['DIA'] * 6 +              # 30% - Evento neutro diurno
-            ['FALSO_POSITIVO'] * 4 +   # 20% - Evento neutro noturno (Filtro de 30s)
-            ['ROTINA_1'] * 5 +         # 25% - Ação Proativa: Boa Noite Autônoma
-            ['ROTINA_2'] * 5           # 25% - Ação Proativa: Deslocamento Noturno Seguro
+            ['Dia-Evento Neutro'] * 30 +                            # 30% - Evento neutro diurno
+            ['Falso_Positivo'] * 20 +                               # 20% - Evento neutro noturno (Filtro de 30s)
+            ['Rotina-Boa_Noite_Autonoma'] * 25 +                    # 25% - Ação Proativa: Boa Noite Autônoma
+            ['Rotina-Deslocamento_Noturno_Seguro'] * 25             # 25% - Ação Proativa: Deslocamento Noturno Seguro
         )
 
-        # 2. Embaralha para ser completamente diferente a cada execução
+        # Embaralha para ser completamente diferente a cada execução
         random.shuffle(cenarios)
 
         for i, cenario in enumerate(cenarios, 1):
-            print(f"\n--- [Cenário {i}/20] Sorteado: {cenario} ---")
+            print(f"\n--- [Cenário {i}/100] Sorteado: {cenario} ---")
 
-            if cenario == 'DIA':
+            if cenario == 'Dia-Evento Neutro':
                 hora = f"{random.randint(8, 18):02d}:00:00"
                 lux_dinamico = random.randint(300, 800)
                 enviar_evento(canal, hora, "SITTING", "LIVING_ROOM", "UNLOCKED", "UNOCCUPIED", True, lux_dinamico, "Descarte Diurno")
                 time.sleep(2)
 
-            elif cenario == 'ROTINA_1':
+            elif cenario == 'Rotina-Boa_Noite_Autonoma':
                 hora = f"23:{random.randint(10, 50):02d}:00"
                 lux_dinamico = random.randint(5, 15)
                 enviar_evento(canal, hora, "LYING_DOWN", "BEDROOM", "UNLOCKED", "OCCUPIED", True, lux_dinamico, "Alerta de Evasão/Segurança")
                 time.sleep(2)
 
-            elif cenario == 'FALSO_POSITIVO':
-                print("Iniciando MOVA/Alívio de Pressão", end="")
+            elif cenario == 'Falso_Positivo':
+                print("Iniciando Alívio de Pressão", end="")
                 for seg in range(15):
                     hora = f"03:15:{seg:02d}"
                     lux_dinamico = random.randint(5, 20)
@@ -91,7 +89,7 @@ def executar_simulacao_dinamica():
                 enviar_evento(canal, "03:15:15", "LYING_DOWN", "BEDROOM", "LOCKED", "OCCUPIED", True, 10, "Fim Falso Positivo (Retorno ao Leito)")
                 time.sleep(2)
 
-            elif cenario == 'ROTINA_2':
+            elif cenario == 'Rotina-Deslocamento_Noturno_Seguro':
                 print("Iniciando Transferência para Cadeira (Aguardando regra de 30s)", end="")
                 for seg in range(1, 36):
                     hora = f"04:20:{seg:02d}"
