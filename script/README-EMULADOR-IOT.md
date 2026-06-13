@@ -1,6 +1,8 @@
 # 📡 Emulador IoT — Visão Funcional (`emulator.py`)
 
+
 Este módulo contém o script Python responsável por simular o ecossistema de sensores de um Ambiente de Vida Assistida (AAL). Ele atua como o produtor (*Publisher*) na arquitetura orientada a eventos, injetando cargas de contexto dinâmico no RabbitMQ para validar o comportamento e a resiliência do Back-end Proativo.
+
 ---
 
 ## 📌 Objetivo do Emulador
