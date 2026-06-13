@@ -15,4 +15,9 @@ public interface MetricsPort {
      * Registra eventos recebidos fora da janela de atuação (eventos diurnos descartados).
      */
     void incrementIgnoredDaytimeEvent();
+
+    /**
+     * Registro de falso positivos para alivio de pressão da cama
+     */
+    void incrementFalsePositiveEvent();
 }

@@ -95,7 +95,7 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
             metricsPort.incrementProactiveAction(
                     "Boa Noite Autonoma", "Desligar luzes e trancar portas",
                     payload.roomLocation().name(), payload.userPosture().name(),
-                    "Deslocamento Leito-Porta", "Seguranca Residencial"
+                    "Deslocamento Cama-Porta", "Segurança Residencial"
             );
         } else {
             log.debug("ROTINA 1 IGNORADA: Portas já estão trancadas. Nenhuma ação necessária.");
@@ -108,7 +108,7 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
      * Matriz: Cama Vazia + Movimento Detetado
      */
     private void evaluateNightMovementRoutine(ContextEventPayload payload) {
-        // 1. O sensor detectou ausência de pressão na cama (Pode ser alívio de pressão OU saída real)
+        // sensor detectou ausência de pressão na cama -> Pode ser alívio de pressão OU saída real;
         if (payload.bedPressureStatus() == BedPressureStatus.UNOCCUPIED && Boolean.TRUE.equals(payload.presenceDetected())) {
 
             // Usa o relógio injetado (Clock) em vez de depender da máquina física diretamente
@@ -124,7 +124,7 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
                     metricsPort.incrementProactiveAction(
                             "Deslocamento Noturno Seguro", "Iluminar rota",
                             payload.roomLocation().name(), payload.userPosture().name(),
-                            "Acionamento de Interruptores", "Prevencao de Quedas"
+                            "Acionamento de Interruptores", "Prevenção de Colisão"
                     );
                     routine2AlreadyTriggered = true;
                 }
@@ -132,33 +132,12 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
         } else if (payload.bedPressureStatus() == BedPressureStatus.OCCUPIED) {
             if (bedAbsenceTracker.containsKey(PERSONA_ID)) {
                 log.info("FILTRO CLÍNICO ATIVADO: Falso positivo mitigado (Alívio de Pressão). Resetando contadores.");
+
+                metricsPort.incrementFalsePositiveEvent();
+
                 resetNightTrackers();
             }
         }
-//        boolean isUserMoving = payload.bedPressureStatus() == BedPressureStatus.UNOCCUPIED &&
-//                Boolean.TRUE.equals(payload.presenceDetected());
-//
-//        // Guard Clause: Se não houver movimentação fora da cama, interrompe a avaliação
-//        if (!isUserMoving) {
-//            return;
-//        }
-//
-//        // Avaliação de risco visual e tomada de decisão
-//        if (payload.luminosityLux() < thresholds.minSafeLuminosity()) {
-//            actionTriggerPort.turnOnPathLights();
-//            log.info("ROTINA 2 DISPARADA: Acendendo caminho de luz. Motivo: Risco visual na transferência ou movimentação.");
-//
-//            meterRegistry.counter("proactive_actions_total",
-//                    "routine", "Deslocamento Noturno Seguro",
-//                    "action", "Iluminar rota",
-//                    "room", payload.roomLocation().name(),           // Mostra ONDE a autonomia foi dada
-//                    "posture", payload.userPosture().name(),         // Mostra a vulnerabilidade atual (ex: SITTING)
-//                    "physical_relief", "Acionamento de Interruptores", // O que ele não precisou fazer fisicamente
-//                    "cognitive_relief", "Prevencao de Quedas"        // O que ele não precisou se preocupar
-//            ).increment();
-//        } else {
-//            log.debug("ROTINA 2 IGNORADA: O ambiente já possui luminosidade igual ou superior ao limiar seguro.");
-//        }
     }
 
     /**
