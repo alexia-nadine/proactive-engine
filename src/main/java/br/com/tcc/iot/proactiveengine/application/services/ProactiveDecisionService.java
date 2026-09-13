@@ -1,6 +1,7 @@
 package br.com.tcc.iot.proactiveengine.application.services;
 
 import br.com.tcc.iot.proactiveengine.application.ports.input.EvaluateRoutineUseCase;
+import br.com.tcc.iot.proactiveengine.application.ports.input.ProactiveRulesConfig;
 import br.com.tcc.iot.proactiveengine.application.ports.output.ActionTriggerPort;
 import br.com.tcc.iot.proactiveengine.application.ports.output.MetricsPort;
 import br.com.tcc.iot.proactiveengine.domain.ContextEventPayload;
@@ -8,10 +9,8 @@ import br.com.tcc.iot.proactiveengine.domain.enums.BedPressureStatus;
 import br.com.tcc.iot.proactiveengine.domain.enums.DoorStatus;
 import br.com.tcc.iot.proactiveengine.domain.enums.RoomLocation;
 import br.com.tcc.iot.proactiveengine.domain.enums.UserPosture;
-import br.com.tcc.iot.proactiveengine.infrastructure.config.ProactiveRulesProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -27,12 +26,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * utilizando um {@code ConcurrentHashMap}.
  * </p>
  */
-@Service
 public class ProactiveDecisionService implements EvaluateRoutineUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(ProactiveDecisionService.class);
 
-    private final ProactiveRulesProperties thresholds;
+    private final ProactiveRulesConfig thresholds;
     private final ActionTriggerPort actionTriggerPort;
     private final MetricsPort metricsPort;
     private final Clock clock;
@@ -42,7 +40,7 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
     private static final String PERSONA_ID = "USUARIO_MOBILIDADE_REDUZIDA";
     private boolean routine2AlreadyTriggered = false;
 
-    public ProactiveDecisionService(ProactiveRulesProperties thresholds, ActionTriggerPort actionTriggerPort, MetricsPort metricsPort, Clock clock) {
+    public ProactiveDecisionService(ProactiveRulesConfig thresholds, ActionTriggerPort actionTriggerPort, MetricsPort metricsPort, Clock clock) {
         this.thresholds = thresholds;
         this.actionTriggerPort = actionTriggerPort;
         this.metricsPort = metricsPort;
