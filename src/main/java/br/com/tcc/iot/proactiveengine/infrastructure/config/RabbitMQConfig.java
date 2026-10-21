@@ -12,7 +12,6 @@ import org.springframework.context.annotation.Configuration;
 
 
 @Configuration
-@SuppressWarnings("removal")
 public class RabbitMQConfig {
 
     public static final String QUEUE_NAME = "iot.sensor.events";
@@ -22,7 +21,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue sensorQueue() {
-        return new Queue(QUEUE_NAME, true); // true = A fila sobrevive se o servidor for reiniciado
+        return new Queue(QUEUE_NAME, true);
     }
 
     @Bean
@@ -35,7 +34,6 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(queue).to(exchange).with(ROUTING_KEY);
     }
 
-    // Traduz o JSON bruto para o nosso Record ContextEventPayload de forma automática
     @Bean
     public Jackson2JsonMessageConverter messageConverter(ObjectMapper objectMapper) {
         return new Jackson2JsonMessageConverter(objectMapper);
