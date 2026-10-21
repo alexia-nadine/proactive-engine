@@ -62,13 +62,15 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
                 payload.userPosture(), payload.doorStatus(), payload.luminosityLux(), payload.timeOfDay());
         if (!isNightTime(payload.timeOfDay())) {
             log.info("Monitorização: Evento ignorado. Fora do limiar noturno definido.");
-            metricsPort.incrementIgnoredDaytimeEvent();
+            metricsPort.incrementDaytimeEventIgnored();
             resetNightTrackers();
             return;
         }
 
-        evaluateSleepRoutine(payload);
-        evaluateNightMovementRoutine(payload);
+        boolean decisionTriggered = evaluateSleepRoutine(payload) || evaluateNightMovementRoutine(payload);
+        if (!decisionTriggered) {
+            metricsPort.incrementDecisionNoAction();
+        }
     }
 
     /**
@@ -76,18 +78,20 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
      * Avalia o risco de evasão noturna quando o usuario com mobilidade reduzida já se encontra deitado.
      * Matriz: Deitado + No Quarto + Cama Ocupada
      */
-    private void evaluateSleepRoutine(ContextEventPayload payload) {
+    private boolean evaluateSleepRoutine(ContextEventPayload payload) {
         boolean isUserSleeping = payload.userPosture() == UserPosture.LYING_DOWN &&
                 payload.roomLocation() == RoomLocation.BEDROOM &&
                 payload.bedPressureStatus() == BedPressureStatus.OCCUPIED;
 
-        // Guard Clause: Se não estiver dormindo, interrompe a avaliação desta rotina
+        // Guard Clause -> se não estiver dormindo, interrompe a avaliação desta rotina
         if (!isUserSleeping) {
-            return;
+            return false;
         }
 
         if (payload.doorStatus() == DoorStatus.UNLOCKED) {
             actionTriggerPort.triggerSecurityAlert();
+            metricsPort.incrementAvoidedManualInteraction("door_lock");
+            metricsPort.incrementProactiveDecision();
             log.info("ROTINA 1 DISPARADA: Trancando portas e apagando luzes.");
 
             metricsPort.incrementProactiveAction(
@@ -95,9 +99,11 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
                     payload.roomLocation().name(), payload.userPosture().name(),
                     "Deslocamento Cama-Porta", "Segurança Residencial"
             );
-        } else {
-            log.debug("ROTINA 1 IGNORADA: Portas já estão trancadas. Nenhuma ação necessária.");
+            return true;
         }
+
+        log.debug("ROTINA 1 IGNORADA: Portas já estão trancadas. Nenhuma ação necessária.");
+        return false;
     }
 
     /**
@@ -105,7 +111,7 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
      * Avalia o risco de queda por ausência de luminosidade caso o usuario se levante de madrugada.
      * Matriz: Cama Vazia + Movimento Detetado
      */
-    private void evaluateNightMovementRoutine(ContextEventPayload payload) {
+    private boolean evaluateNightMovementRoutine(ContextEventPayload payload) {
         // sensor detectou ausência de pressão na cama -> Pode ser alívio de pressão OU saída real;
         if (payload.bedPressureStatus() == BedPressureStatus.UNOCCUPIED && Boolean.TRUE.equals(payload.presenceDetected())) {
 
@@ -117,6 +123,8 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
             if (secondsAbsent >= thresholds.bedAbsenceDelaySeconds()) {
                 if (!routine2AlreadyTriggered && payload.luminosityLux() < thresholds.minSafeLuminosity()) {
                     actionTriggerPort.turnOnPathLights();
+                    metricsPort.incrementAvoidedManualInteraction("light_switch");
+                    metricsPort.incrementProactiveDecision();
                     log.info("ROTINA 2 DISPARADA: Acendendo caminho de luz. Motivo: Saída consolidada após {}s.", secondsAbsent);
 
                     metricsPort.incrementProactiveAction(
@@ -125,17 +133,24 @@ public class ProactiveDecisionService implements EvaluateRoutineUseCase {
                             "Acionamento de Interruptores", "Prevenção de Colisão"
                     );
                     routine2AlreadyTriggered = true;
+                    return true;
                 }
             }
         } else if (payload.bedPressureStatus() == BedPressureStatus.OCCUPIED) {
             if (bedAbsenceTracker.containsKey(PERSONA_ID)) {
-                log.info("FILTRO CLÍNICO ATIVADO: Falso positivo mitigado (Alívio de Pressão). Resetando contadores.");
 
-                metricsPort.incrementFalsePositiveEvent();
+                if (!routine2AlreadyTriggered) {
+                    log.info("FILTRO CLÍNICO ATIVADO: Falso positivo mitigado (Alívio de Pressão). Resetando contadores.");
+                    metricsPort.incrementFalsePositiveEvent();
+                } else {
+                    log.info("RETORNO SEGURO: Usuário retornou à cama após uso da iluminação proativa.");
+                }
 
                 resetNightTrackers();
             }
         }
+
+        return false;
     }
 
     /**
